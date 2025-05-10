@@ -26,3 +26,7 @@ go get -u github.com/spf13/viper
 ```
 go get -u github.com/go-playground/validator/v10
 ```
+- Logrus
+```
+go get -u github.com/sirupsen/logrus
+```
