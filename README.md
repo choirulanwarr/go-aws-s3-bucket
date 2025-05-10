@@ -22,3 +22,7 @@ go get -u gorm.io/driver/postgres
 ```
 go get -u github.com/spf13/viper
 ```
+- Validator Go v10
+```
+go get -u github.com/go-playground/validator/v10
+```
