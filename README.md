@@ -3,3 +3,14 @@
 This is amazon storage (s3) integration using Client. Using golang gin Gonic and postgres setup documentation using GO.
 
 Help me to improve this code more flexible and esy to use
+
+## Feature golang
+
+- Gin Gonic Framework 
+```
+go get -u github.com/gin-gonic/gin
+```
+- Gorm
+```
+go get -u gorm.io/gorm
+```
