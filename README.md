@@ -1,6 +1,6 @@
-## AWS Integration
+## AWS S3 Integration
 
-This is amazon s3 storage integration using REST API. Using golang gin Gonic and postgres setup documentation using GO.
+This is amazon storage (s3) integration using Client. Using golang gin Gonic and postgres setup documentation using GO.
 
 Help me to improve this code more flexible and esy to use
 
@@ -11,7 +11,7 @@ API
 
 ## Feature golang
 
-- Gin Gonic Framework
+- Gin Gonic Framework 
 ```
 go get -u github.com/gin-gonic/gin
 ```
@@ -23,9 +23,9 @@ go get -u gorm.io/gorm
 ```
 go get -u gorm.io/driver/postgres
 ```
-- Google Cloud Storage
+- AWS SDK
 ```
-go get -u cloud.google.com/go/storage
+go get -u github.com/aws/aws-sdk-go 
 ```
 - Viper
 ```
@@ -34,14 +34,6 @@ go get -u github.com/spf13/viper
 - Validator Go v10
 ```
 go get -u github.com/go-playground/validator/v10
-```
-- Golang JWT v5
-```
-go get -u github.com/golang-jwt/jwt/v5
-```
-- Google UUID
-```
-go get -u github.com/google/uuid
 ```
 - Logrus
 ```
