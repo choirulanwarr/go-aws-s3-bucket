@@ -4,6 +4,11 @@ This is amazon storage (s3) integration using Client. Using golang gin Gonic and
 
 Help me to improve this code more flexible and esy to use
 
+API
+- `GET` api/v1/list
+
+**NEXT update ...**
+
 ## Feature golang
 
 - Gin Gonic Framework 

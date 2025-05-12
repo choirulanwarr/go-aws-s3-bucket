@@ -5,5 +5,5 @@ func initGlobalRoutes(config *Config) {
 
 	// File
 	globalApiFile := globalApi.Group("/")
-	globalApiFile.GET("")
+	globalApiFile.GET("/list", config.FileHandler.GetAllFile)
 }
