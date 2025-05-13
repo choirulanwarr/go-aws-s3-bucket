@@ -25,3 +25,7 @@ func GetFileResponseFormatter(listFile *[]s3.Object) []GetFileResponse {
 
 	return result
 }
+
+type UploadFileResponse struct {
+	Path string `json:"path"`
+}
