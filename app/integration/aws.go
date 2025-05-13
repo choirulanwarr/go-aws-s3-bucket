@@ -81,8 +81,7 @@ func (h *AWS) ListObjects() (*[]s3.Object, error) {
 
 func (h *AWS) Upload(apiCallID, folder, filename string, fileData []byte) (string, error) {
 	path := filepath.Join(folder, helper.GenerateUniqueFilename()+filepath.Ext(filename))
-	helper.LogInfo(apiCallID, "Uploading file: "+path)
-
+	
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(h.Region),
 		Credentials: credentials.NewStaticCredentials(
