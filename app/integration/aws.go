@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,6 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/viper"
+	"go-aws-s3-bucket/app/helper"
+	"path/filepath"
 )
 
 type AWS struct {
@@ -74,4 +77,36 @@ func (h *AWS) ListObjects() (*[]s3.Object, error) {
 	}
 
 	return &list, nil
+}
+
+func (h *AWS) Upload(apiCallID, folder, filename string, fileData []byte) (string, error) {
+	path := filepath.Join(folder, helper.GenerateUniqueFilename()+filepath.Ext(filename))
+	helper.LogInfo(apiCallID, "Uploading file: "+path)
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(h.Region),
+		Credentials: credentials.NewStaticCredentials(
+			h.AccessKey,
+			h.SecretKey,
+			"",
+		),
+	}))
+	svc := s3.New(sess)
+
+	params := &s3.PutObjectInput{
+		Bucket:      aws.String(h.BucketName),
+		Key:         aws.String(path),
+		Body:        bytes.NewReader(fileData),
+		ACL:         aws.String(s3.BucketCannedACLPublicRead),
+		ContentType: aws.String(filepath.Ext(filename)),
+	}
+
+	_, err := svc.PutObject(params)
+	if err != nil {
+		return "", err
+	}
+
+	helper.LogInfo(apiCallID, "Uploaded file successfully: "+path)
+
+	return path, nil
 }

@@ -34,3 +34,19 @@ func (f *FileService) GetAllFile(apiCallID string) (*[]response.GetFileResponse,
 
 	return &formatted, constant.Res200Get
 }
+
+func (f *FileService) UploadFile(apiCallID, folder, filename string, file []byte) (*response.UploadFileResponse, constant.ResponseMap) {
+	gcs, err := integration.NewAWSInstance(f.Viper)
+	if err != nil {
+		helper.LogError(apiCallID, "Error creating AWS configuration: "+err.Error())
+		return nil, constant.Res422SomethingWentWrong
+	}
+	uploadedPath, err := gcs.Upload(apiCallID, folder, filename, file)
+	if err != nil {
+		helper.LogError(apiCallID, "Error upload file : "+err.Error())
+		return nil, constant.Res422SomethingWentWrong
+	}
+
+	return &response.UploadFileResponse{Path: uploadedPath}, constant.Res200Save
+
+}
