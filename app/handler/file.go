@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go-aws-s3-bucket/app/constant"
@@ -8,6 +9,8 @@ import (
 	"go-aws-s3-bucket/app/resource/request"
 	"go-aws-s3-bucket/app/service"
 	"io"
+	"net/http"
+	"path/filepath"
 )
 
 type FileHandler struct {
@@ -75,4 +78,52 @@ func (f *FileHandler) UploadFile(ctx *gin.Context) {
 
 	result, response := f.Service.UploadFile(apiCallID, req.Folder, formFile.Filename, fileBytes)
 	helper.ResponseAPI(ctx, response, result)
+}
+
+func (f *FileHandler) DownloadFile(ctx *gin.Context) {
+	apiCallID := ctx.GetString(constant.RequestIDKey)
+
+	filePath := ctx.Query("path")
+	req := request.DownloadFileRequest{
+		Path: filePath,
+	}
+
+	if err := f.Validator.Struct(req); err != nil {
+		helper.LogError(apiCallID, "Payload validation failed: "+err.Error())
+		formattedErrors := helper.ErrorValidationFormatter(err.(validator.ValidationErrors))
+		helper.ResponseAPI(ctx, constant.Res400InvalidPayload, formattedErrors)
+		return
+	}
+
+	fileStream, contentType, result := f.Service.DownloadFile(apiCallID, filePath)
+	if result.Code != http.StatusOK {
+		helper.LogError(apiCallID, fmt.Sprintf("Failed to download file: %s", result.Message))
+		helper.ResponseAPI(ctx, result)
+		return
+	}
+
+	if fileStream == nil {
+		helper.LogError(apiCallID, "Download failed: file stream is nil")
+		helper.ResponseAPI(ctx, constant.Res422SomethingWentWrong)
+		return
+	}
+
+	fileName := filepath.Base(filePath)
+
+	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	ctx.Header("Content-Type", helper.DefaultMIME(contentType))
+
+	helper.LogInfo(apiCallID, "Serving file: "+fileName+" with Content-Type: "+contentType)
+
+	if _, err := io.Copy(ctx.Writer, fileStream); err != nil {
+		helper.LogError(apiCallID, "Failed to write file to response: "+err.Error())
+		helper.ResponseAPI(ctx, constant.Res422SomethingWentWrong)
+		return
+	}
+
+	if err := fileStream.Close(); err != nil {
+		helper.LogError(apiCallID, "Failed to close file: "+err.Error())
+		helper.ResponseAPI(ctx, constant.Res422SomethingWentWrong)
+		return
+	}
 }

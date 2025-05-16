@@ -7,4 +7,5 @@ func initGlobalRoutes(config *Config) {
 	globalApiFile := globalApi.Group("/")
 	globalApiFile.GET("/list", config.FileHandler.GetAllFile)
 	globalApiFile.POST("/upload", config.FileHandler.UploadFile)
+	globalApiFile.GET("/download", config.FileHandler.DownloadFile)
 }
