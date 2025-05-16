@@ -49,3 +49,10 @@ func GenerateUniqueFilename() string {
 	randomSuffix := rand.Intn(10_000_000) + 1
 	return fmt.Sprintf("%s%d", timestamp, randomSuffix)
 }
+
+func DefaultMIME(mime string) string {
+	if mime == "" {
+		return "application/octet-stream"
+	}
+	return mime
+}

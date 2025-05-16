@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/viper"
 	"go-aws-s3-bucket/app/helper"
+	"io"
 	"path/filepath"
 )
 
@@ -81,7 +82,7 @@ func (h *AWS) ListObjects() (*[]s3.Object, error) {
 
 func (h *AWS) Upload(apiCallID, folder, filename string, fileData []byte) (string, error) {
 	path := filepath.Join(folder, helper.GenerateUniqueFilename()+filepath.Ext(filename))
-	
+
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(h.Region),
 		Credentials: credentials.NewStaticCredentials(
@@ -108,4 +109,29 @@ func (h *AWS) Upload(apiCallID, folder, filename string, fileData []byte) (strin
 	helper.LogInfo(apiCallID, "Uploaded file successfully: "+path)
 
 	return path, nil
+}
+
+func (h *AWS) Download(apiCallID, filePath string) (io.ReadCloser, string, error) {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(h.Region),
+		Credentials: credentials.NewStaticCredentials(
+			h.AccessKey,
+			h.SecretKey,
+			"",
+		),
+	}))
+	svc := s3.New(sess)
+
+	output, err := svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(h.BucketName),
+		Key:    aws.String(filePath),
+	})
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	helper.LogInfo(apiCallID, "Downloaded file successfully")
+
+	return output.Body, *output.ContentType, nil
 }
