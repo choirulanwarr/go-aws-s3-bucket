@@ -6,6 +6,7 @@ Help me to improve this code more flexible and esy to use
 
 API
 - `GET` api/v1/list
+- `POST` api/v1/upload
 
 **NEXT update ...**
 
