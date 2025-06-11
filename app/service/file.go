@@ -1,12 +1,13 @@
 package service
 
 import (
-	"github.com/spf13/viper"
 	"go-aws-s3-bucket/app/constant"
 	"go-aws-s3-bucket/app/helper"
 	"go-aws-s3-bucket/app/integration"
 	"go-aws-s3-bucket/app/resource/response"
 	"io"
+
+	"github.com/spf13/viper"
 )
 
 type FileService struct {
@@ -31,7 +32,7 @@ func (f *FileService) GetAllFile(apiCallID string) (*[]response.GetFileResponse,
 		return nil, constant.Res422SomethingWentWrong
 	}
 
-	formatted := response.GetFileResponseFormatter(listFile)
+	formatted := response.GetFileResponseFormatter(listFile, awsConfig.S3URLPrefix)
 
 	return &formatted, constant.Res200Get
 }
