@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go-aws-s3-bucket/app/helper"
+	"io"
+	"mime"
+	"path/filepath"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/viper"
-	"go-aws-s3-bucket/app/helper"
-	"io"
-	"path/filepath"
 )
 
 type AWS struct {
@@ -54,25 +57,37 @@ func NewAWSInstance(v *viper.Viper) (*AWS, error) {
 }
 
 func (h *AWS) ListObjects() (*[]s3.Object, error) {
-	sess := session.Must(session.NewSession(&aws.Config{
+	// Create AWS session with proper error handling
+	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(h.Region),
 		Credentials: credentials.NewStaticCredentials(
 			h.AccessKey,
 			h.SecretKey,
 			"",
 		),
-	}))
-	svc := s3.New(sess)
-
-	resp, err := svc.ListObjectsV2WithContext(context.Background(), &s3.ListObjectsV2Input{
-		Bucket: aws.String(h.BucketName),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
 	}
 
-	var list []s3.Object
+	// Initialize S3 client
+	svc := s3.New(sess)
 
+	// Prepare list objects parameters
+	params := &s3.ListObjectsV2Input{
+		Bucket: aws.String(h.BucketName),
+	}
+
+	// List objects from S3 with context
+	resp, err := svc.ListObjectsV2WithContext(context.Background(), params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list objects from S3: %w", err)
+	}
+
+	// Initialize result slice with capacity
+	list := make([]s3.Object, 0, len(resp.Contents))
+
+	// Append objects to result slice
 	for _, obj := range resp.Contents {
 		list = append(list, *obj)
 	}
@@ -81,57 +96,84 @@ func (h *AWS) ListObjects() (*[]s3.Object, error) {
 }
 
 func (h *AWS) Upload(apiCallID, folder, filename string, fileData []byte) (string, error) {
+	// Generate unique file path
 	path := filepath.Join(folder, helper.GenerateUniqueFilename()+filepath.Ext(filename))
 
-	sess := session.Must(session.NewSession(&aws.Config{
+	// Create AWS session with proper error handling
+	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(h.Region),
 		Credentials: credentials.NewStaticCredentials(
 			h.AccessKey,
 			h.SecretKey,
 			"",
 		),
-	}))
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	// Initialize S3 client
 	svc := s3.New(sess)
 
+	// Get content type from file extension
+	contentType := helper.DefaultMIME(mime.TypeByExtension(filepath.Ext(filename)))
+
+	// Prepare upload parameters
 	params := &s3.PutObjectInput{
 		Bucket:      aws.String(h.BucketName),
 		Key:         aws.String(path),
 		Body:        bytes.NewReader(fileData),
 		ACL:         aws.String(s3.BucketCannedACLPublicRead),
-		ContentType: aws.String(filepath.Ext(filename)),
+		ContentType: aws.String(contentType),
+		Metadata: map[string]*string{
+			"original-filename": aws.String(filename),
+			"upload-timestamp":  aws.String(time.Now().UTC().Format(time.RFC3339)),
+		},
 	}
 
-	_, err := svc.PutObject(params)
+	// Upload file to S3
+	_, err = svc.PutObjectWithContext(context.Background(), params)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to upload file to S3: %w", err)
 	}
 
-	helper.LogInfo(apiCallID, "Uploaded file successfully: "+path)
+	// Log successful upload
+	helper.LogInfo(apiCallID, fmt.Sprintf("Successfully uploaded file to S3: %s (original: %s)", path, filename))
 
 	return path, nil
 }
 
 func (h *AWS) Download(apiCallID, filePath string) (io.ReadCloser, string, error) {
-	sess := session.Must(session.NewSession(&aws.Config{
+	// Create AWS session with proper error handling
+	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(h.Region),
 		Credentials: credentials.NewStaticCredentials(
 			h.AccessKey,
 			h.SecretKey,
 			"",
 		),
-	}))
-	svc := s3.New(sess)
-
-	output, err := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(h.BucketName),
-		Key:    aws.String(filePath),
 	})
-
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("failed to create AWS session: %w", err)
 	}
 
-	helper.LogInfo(apiCallID, "Downloaded file successfully")
+	// Initialize S3 client
+	svc := s3.New(sess)
+
+	// Prepare download parameters
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(h.BucketName),
+		Key:    aws.String(filePath),
+	}
+
+	// Download file from S3
+	output, err := svc.GetObjectWithContext(context.Background(), params)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to download file from S3: %w", err)
+	}
+
+	// Log successful download
+	helper.LogInfo(apiCallID, fmt.Sprintf("Successfully downloaded file from S3: %s", filePath))
 
 	return output.Body, *output.ContentType, nil
 }
