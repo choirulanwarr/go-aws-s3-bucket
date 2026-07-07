@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: aws-s3-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
+      POSTGRES_DB: ${DB_NAME:-aws}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aws-s3-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-aws}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Go Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aws-s3-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-4001}:4001"
+    env_file:
+      - .env
+    environment:
+      # Override DB_HOST to point to the postgres container
+      DB_HOST: postgres
+      DB_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - aws-s3-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  aws-s3-network:
+    driver: bridge

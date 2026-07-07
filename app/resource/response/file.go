@@ -32,3 +32,14 @@ func GetFileResponseFormatter(listFile *[]s3.Object, s3URLPrefix string) []GetFi
 type UploadFileResponse struct {
 	Path string `json:"path"`
 }
+
+type PresignedURLResponse struct {
+	URL       string `json:"url"`
+	Path      string `json:"path"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+type MoveFileResponse struct {
+	SourcePath string `json:"source_path"`
+	DestPath   string `json:"dest_path"`
+}

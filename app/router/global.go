@@ -8,4 +8,6 @@ func initGlobalRoutes(config *Config) {
 	globalApiFile.GET("/list", config.FileHandler.GetAllFile)
 	globalApiFile.POST("/upload", config.FileHandler.UploadFile)
 	globalApiFile.GET("/download", config.FileHandler.DownloadFile)
+	globalApiFile.GET("/presigned-url", config.FileHandler.PresignedURL)
+	globalApiFile.POST("/move", config.FileHandler.MoveFile)
 }
