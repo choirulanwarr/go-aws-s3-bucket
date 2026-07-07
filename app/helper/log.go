@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"io"
@@ -21,7 +20,10 @@ func NewLoggerLog() *logrus.Logger {
 	config.SetConfigType("env")
 
 	if err := config.ReadInConfig(); err != nil {
-		panic(fmt.Errorf("fatal error load env file: %w", err))
+		// .env file not found — use defaults and environment variables only
+		config.SetDefault("LOGGER_STDOUT", true)
+		config.SetDefault("LOGGER_FILE_LOCATION", "")
+		config.SetDefault("LOGGER_LEVEL", "info")
 	}
 
 	var writers []io.Writer

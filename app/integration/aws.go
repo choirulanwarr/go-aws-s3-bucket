@@ -143,6 +143,40 @@ func (h *AWS) Upload(apiCallID, folder, filename string, fileData []byte) (strin
 	return path, nil
 }
 
+func (h *AWS) GeneratePresignedURL(apiCallID, filePath string, expiration time.Duration) (string, error) {
+	// Create AWS session
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(h.Region),
+		Credentials: credentials.NewStaticCredentials(
+			h.AccessKey,
+			h.SecretKey,
+			"",
+		),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	// Initialize S3 client
+	svc := s3.New(sess)
+
+	// Create GetObject request
+	req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(h.BucketName),
+		Key:    aws.String(filePath),
+	})
+
+	// Generate presigned URL
+	urlStr, err := req.Presign(expiration)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+
+	helper.LogInfo(apiCallID, fmt.Sprintf("Generated presigned URL for: %s (expires in %s)", filePath, expiration))
+
+	return urlStr, nil
+}
+
 func (h *AWS) Download(apiCallID, filePath string) (io.ReadCloser, string, error) {
 	// Create AWS session with proper error handling
 	sess, err := session.NewSession(&aws.Config{
@@ -176,4 +210,53 @@ func (h *AWS) Download(apiCallID, filePath string) (io.ReadCloser, string, error
 	helper.LogInfo(apiCallID, fmt.Sprintf("Successfully downloaded file from S3: %s", filePath))
 
 	return output.Body, *output.ContentType, nil
+}
+
+func (h *AWS) MoveObject(apiCallID, sourcePath, destPath string) error {
+	// Create AWS session
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(h.Region),
+		Credentials: credentials.NewStaticCredentials(
+			h.AccessKey,
+			h.SecretKey,
+			"",
+		),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	// Initialize S3 client
+	svc := s3.New(sess)
+
+	// Step 1: Copy object from source to destination
+	copyInput := &s3.CopyObjectInput{
+		Bucket:     aws.String(h.BucketName),
+		CopySource: aws.String(fmt.Sprintf("%s/%s", h.BucketName, sourcePath)),
+		Key:        aws.String(destPath),
+		ACL:        aws.String(s3.BucketCannedACLPublicRead),
+	}
+
+	_, err = svc.CopyObjectWithContext(context.Background(), copyInput)
+	if err != nil {
+		return fmt.Errorf("failed to copy object from %s to %s: %w", sourcePath, destPath, err)
+	}
+
+	helper.LogInfo(apiCallID, fmt.Sprintf("Copied object from %s to %s", sourcePath, destPath))
+
+	// Step 2: Delete the source object
+	deleteInput := &s3.DeleteObjectInput{
+		Bucket: aws.String(h.BucketName),
+		Key:    aws.String(sourcePath),
+	}
+
+	_, err = svc.DeleteObjectWithContext(context.Background(), deleteInput)
+	if err != nil {
+		return fmt.Errorf("failed to delete source object %s after copy: %w", sourcePath, err)
+	}
+
+	helper.LogInfo(apiCallID, fmt.Sprintf("Deleted source object: %s", sourcePath))
+	helper.LogInfo(apiCallID, fmt.Sprintf("Successfully moved object from %s to %s", sourcePath, destPath))
+
+	return nil
 }

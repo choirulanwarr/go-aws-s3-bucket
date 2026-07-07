@@ -10,3 +10,13 @@ type UploadFileRequest struct {
 type DownloadFileRequest struct {
 	Path string `validate:"required,not_only_space"`
 }
+
+type PresignedURLRequest struct {
+	Path    string `form:"path" validate:"required,not_only_space"`
+	Expires int    `form:"expires" validate:"omitempty,min=1,max=10080"`
+}
+
+type MoveFileRequest struct {
+	SourcePath string `json:"source_path" validate:"required,not_only_space"`
+	DestPath   string `json:"dest_path" validate:"required,not_only_space"`
+}
